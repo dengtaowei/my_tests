@@ -13,7 +13,7 @@ const volatile bool trace_all = false;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, pid_t);
+	__type(key, u64);
 	__type(value, u64);
 	__uint(max_entries, 10240);
 } sizes SEC(".maps");
@@ -32,8 +32,8 @@ struct {
 
 static int gen_alloc_enter(size_t size)
 {
-    const pid_t pid = bpf_get_current_pid_tgid() >> 32;
-	bpf_map_update_elem(&sizes, &pid, &size, BPF_ANY);
+    const u64 pid_tgid = bpf_get_current_pid_tgid();
+	bpf_map_update_elem(&sizes, &pid_tgid, &size, BPF_ANY);
     if (trace_all)
 	    bpf_printk("malloc_enter size=%d\n", size);
 	return 0;
@@ -46,16 +46,16 @@ static int gen_alloc_enter(size_t size)
  */
 static int gen_alloc_exit2(void *ctx, u64 address)
 {
-	int pid = bpf_get_current_pid_tgid() >> 32;
+	u64 pid_tgid = bpf_get_current_pid_tgid();
 	int cpu_id = bpf_get_smp_processor_id();
 	struct stacktrace_event *event;
 	int cp;
 
-    const u64* size = bpf_map_lookup_elem(&sizes, &pid);
+    const u64* size = bpf_map_lookup_elem(&sizes, &pid_tgid);
     // if (!size)
 	// 	return 0; // missed alloc entry
     
-    bpf_map_delete_elem(&sizes, &pid);
+    bpf_map_delete_elem(&sizes, &pid_tgid);
     
 
 
@@ -63,7 +63,7 @@ static int gen_alloc_exit2(void *ctx, u64 address)
 	if (!event)
 		return 1;
 
-	event->pid = pid;
+	event->pid = pid_tgid >> 32;
 	event->cpu_id = cpu_id;
     event->evt_id = EVT_ID_GEN_ALLOC_RET;
     event->address = (__u64)address;
