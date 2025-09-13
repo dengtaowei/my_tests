@@ -322,7 +322,7 @@ void delete_allocs(char *buffer, uint64_t addr)
     sprintf(buff, "%s/0x%016lx.mem", env.folder, addr);
     if (unlink(buff) < 0)
     {
-        printf("double my_free: 0x%016lx", addr);
+        printf("double free: 0x%016lx\n", addr);
         return;
     }
 }
