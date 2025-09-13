@@ -1,10 +1,13 @@
 # SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
-OUTPUT := .output
+BUILD_ROOT = $(shell pwd)
+OUTPUT := $(BUILD_ROOT)/.output
 CLANG ?= clang
 THIRD_PARTY_DIR := ../third_party
 LIBBPF_SRC := $(abspath $(THIRD_PARTY_DIR)/libbpf/src)
+LIBZ_SRC:= $(abspath $(THIRD_PARTY_DIR)/zlib)
 BPFTOOL_SRC := $(abspath $(THIRD_PARTY_DIR)/bpftool/src)
 LIBBPF_OBJ := $(abspath $(OUTPUT)/libbpf.a)
+LIBZ_OBJ := $(abspath $(OUTPUT)/libz.a)
 BPFTOOL_OUTPUT ?= $(abspath $(OUTPUT)/bpftool)
 BPFTOOL ?= $(BPFTOOL_OUTPUT)/bootstrap/bpftool
 LIBBLAZESYM_SRC := $(abspath $(THIRD_PARTY_DIR)/blazesym/)
@@ -17,6 +20,23 @@ ARCH ?= $(shell uname -m | sed 's/x86_64/x86/' \
 			 | sed 's/mips.*/mips/' \
 			 | sed 's/riscv64/riscv/' \
 			 | sed 's/loongarch64/loongarch/')
+
+LIBBLAZESYM_TARGET :=
+CARGO_FLAGS := --package=blazesym-c --release
+ifeq ($(ARCH), arm64)
+CARGO_FLAGS += --target=aarch64-unknown-linux-gnu
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+LIBBLAZESYM_TARGET := aarch64-unknown-linux-gnu
+
+export CROSS_COMPILE=aarch64-linux-gnu-
+export CC=$(CROSS_COMPILE)gcc
+export LD=$(CROSS_COMPILE)ld
+export AR=$(CROSS_COMPILE)ar
+endif
+
+
 VMLINUX := $(THIRD_PARTY_DIR)/vmlinux.h/include/$(ARCH)/vmlinux.h
 # Use our own libbpf API headers and Linux UAPI headers distributed with
 # libbpf to avoid dependency on system-wide headers, which could be missing or
@@ -25,14 +45,13 @@ INCLUDES := -I$(OUTPUT) -I$(THIRD_PARTY_DIR)/libbpf/include/uapi -I$(dir $(VMLIN
 CFLAGS := -g -Wall
 ALL_LDFLAGS := $(LDFLAGS) $(EXTRA_LDFLAGS)
 
-APPS = minimal minimal_legacy minimal_ns bootstrap uprobe kprobe fentry \
-       usdt sockfilter tc ksyscall task_iter lsm
+APPS = 
 
 CARGO ?= $(shell which cargo)
 ifeq ($(strip $(CARGO)),)
 BZS_APPS :=
 else
-BZS_APPS := profile mymemleak
+BZS_APPS := mymemleak
 APPS += $(BZS_APPS)
 # Required by libblazesym
 ALL_LDFLAGS += -lrt -ldl -lpthread -lm
@@ -67,7 +86,7 @@ define allow-override
     $(eval $(1) = $(2)))
 endef
 
-$(call allow-override,CC,$(CROSS_COMPILE)cc)
+$(call allow-override,CC,$(CROSS_COMPILE)gcc)
 $(call allow-override,LD,$(CROSS_COMPILE)ld)
 
 .PHONY: all
@@ -77,6 +96,7 @@ all: $(APPS)
 clean:
 	$(call msg,CLEAN)
 	$(Q)rm -rf $(OUTPUT) $(APPS)
+	$(Q)$(MAKE) -C $(LIBZ_SRC) clean
 
 $(OUTPUT) $(OUTPUT)/libbpf $(BPFTOOL_OUTPUT):
 	$(call msg,MKDIR,$@)
@@ -90,21 +110,30 @@ $(LIBBPF_OBJ): $(wildcard $(LIBBPF_SRC)/*.[ch] $(LIBBPF_SRC)/Makefile) | $(OUTPU
 		    INCLUDEDIR= LIBDIR= UAPIDIR=			      \
 		    install
 
+
+$(OUTPUT)/lib/libz.a::
+	cd $(LIBZ_SRC) && ./configure --prefix=$(OUTPUT) && make install
+
+# Build libz
+$(LIBZ_OBJ): $(OUTPUT)/lib/libz.a | $(OUTPUT)
+	$(call msg,LIB,$@)
+	$(Q)cp $(OUTPUT)/lib/libz.a $(LIBZ_OBJ)
+
 # Build bpftool
 $(BPFTOOL): | $(BPFTOOL_OUTPUT)
 	$(call msg,BPFTOOL,$@)
 	$(Q)$(MAKE) ARCH= CROSS_COMPILE= OUTPUT=$(BPFTOOL_OUTPUT)/ -C $(BPFTOOL_SRC) bootstrap
 
 
-$(LIBBLAZESYM_SRC)/target/release/libblazesym_c.a::
-	$(Q)cd $(LIBBLAZESYM_SRC) && $(CARGO) build --package=blazesym-c --release
+$(LIBBLAZESYM_SRC)/target/$(LIBBLAZESYM_TARGET)/release/libblazesym_c.a::
+	$(Q)cd $(LIBBLAZESYM_SRC) && $(CARGO) build $(CARGO_FLAGS)
 
-$(LIBBLAZESYM_OBJ): $(LIBBLAZESYM_SRC)/target/release/libblazesym_c.a | $(OUTPUT)
+$(LIBBLAZESYM_OBJ): $(LIBBLAZESYM_SRC)/target/$(LIBBLAZESYM_TARGET)/release/libblazesym_c.a | $(OUTPUT)
 	$(call msg,LIB, $@)
-	$(Q)cp $(LIBBLAZESYM_SRC)/target/release/libblazesym_c.a $@
+	$(Q)cp $(LIBBLAZESYM_SRC)/target/$(LIBBLAZESYM_TARGET)/release/libblazesym_c.a $@
 
 # Build BPF code
-$(OUTPUT)/%.bpf.o: %.bpf.c $(LIBBPF_OBJ) $(wildcard %.h) $(VMLINUX) | $(OUTPUT) $(BPFTOOL)
+$(OUTPUT)/%.bpf.o: %.bpf.c $(LIBBPF_OBJ) $(LIBZ_OBJ) $(wildcard %.h) $(VMLINUX) | $(OUTPUT) $(BPFTOOL)
 	$(call msg,BPF,$@)
 	$(Q)$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH)		      \
 		     $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES)		      \
@@ -128,9 +157,9 @@ $(patsubst %,$(OUTPUT)/%.o,$(BZS_APPS)): $(LIBBLAZESYM_OBJ)
 $(BZS_APPS): $(LIBBLAZESYM_OBJ)
 
 # Build application binary
-$(APPS): %: $(OUTPUT)/%.o $(LIBBPF_OBJ) | $(OUTPUT)
+$(APPS): %: $(OUTPUT)/%.o $(LIBBPF_OBJ) $(LIBZ_OBJ) | $(OUTPUT)
 	$(call msg,BINARY,$@)
-	$(Q)$(CC) $(CFLAGS) $^ $(ALL_LDFLAGS) -lelf -lz -o $@
+	$(Q)$(CC) $(CFLAGS) $^ $(ALL_LDFLAGS) -lelf -o $@
 
 # delete failed targets
 .DELETE_ON_ERROR:
