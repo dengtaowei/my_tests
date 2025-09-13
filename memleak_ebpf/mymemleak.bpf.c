@@ -67,6 +67,7 @@ static int gen_alloc_exit2(void *ctx, u64 address)
 	event->cpu_id = cpu_id;
     event->evt_id = EVT_ID_GEN_ALLOC_RET;
     event->address = (__u64)address;
+	event->timestamp_ns = bpf_ktime_get_ns();
     if (size)
         event->size = *size;
 
@@ -110,6 +111,7 @@ static int gen_free_enter(const void *address)
 	event->cpu_id = cpu_id;
     event->evt_id = EVT_ID_FREE_IN;
     event->address = (__u64)address;
+	event->timestamp_ns = bpf_ktime_get_ns();
 
 	if (bpf_get_current_comm(event->comm, sizeof(event->comm)))
 		event->comm[0] = 0;

@@ -5,8 +5,11 @@
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
+#include <sys/time.h>  // 用于 struct timeval
 #include <sys/resource.h>
 #include <bpf/libbpf.h>
+#include <sys/sysinfo.h>
 #include "mymemleak.skel.h"
 #include "mymemleak.h"
 #include <assert.h>
@@ -158,31 +161,31 @@ static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va
 
 static struct blaze_symbolizer *symbolizer;
 
-static void print_frame(char *buffer, int *pos, const char *name, uintptr_t input_addr, uintptr_t addr, uint64_t offset, const blaze_symbolize_code_info* code_info)
+static void print_frame(char *buffer, int buflen, int *pos, const char *name, uintptr_t input_addr, uintptr_t addr, uint64_t offset, const blaze_symbolize_code_info* code_info)
 {
 	/* If we have an input address  we have a new symbol. */
 	if (input_addr != 0) {
-		*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, "%016lx: %s @ 0x%lx+0x%lx", input_addr, name, addr, offset);
+		*pos += snprintf(buffer + *pos, buflen - *pos, "%016lx: %s @ 0x%lx+0x%lx", input_addr, name, addr, offset);
 		if (code_info != NULL && code_info->dir != NULL && code_info->file != NULL) {
-			*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, " %s/%s:%u\n", code_info->dir, code_info->file, code_info->line);
+			*pos += snprintf(buffer + *pos, buflen - *pos, " %s/%s:%u\n", code_info->dir, code_info->file, code_info->line);
 		} else if (code_info != NULL && code_info->file != NULL) {
-			*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, " %s:%u\n", code_info->file, code_info->line);
+			*pos += snprintf(buffer + *pos, buflen - *pos, " %s:%u\n", code_info->file, code_info->line);
 		} else {
-			*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, "\n");
+			*pos += snprintf(buffer + *pos, buflen - *pos, "\n");
 		}
 	} else {
-		*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, "%16s  %s", "", name);
+		*pos += snprintf(buffer + *pos, buflen - *pos, "%16s  %s", "", name);
 		if (code_info != NULL && code_info->dir != NULL && code_info->file != NULL) {
-			*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, "@ %s/%s:%u [inlined]\n", code_info->dir, code_info->file, code_info->line);
+			*pos += snprintf(buffer + *pos, buflen - *pos, "@ %s/%s:%u [inlined]\n", code_info->dir, code_info->file, code_info->line);
 		} else if (code_info != NULL && code_info->file != NULL) {
-			*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, "@ %s:%u [inlined]\n", code_info->file, code_info->line);
+			*pos += snprintf(buffer + *pos, buflen - *pos, "@ %s:%u [inlined]\n", code_info->file, code_info->line);
 		} else {
-			*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, "[inlined]\n");
+			*pos += snprintf(buffer + *pos, buflen - *pos, "[inlined]\n");
 		}
 	}
 }
 
-static void show_stack_trace(char *buffer, int *pos, __u64 *stack, int stack_sz, pid_t pid)
+static void show_stack_trace(char *buffer, int buflen, int *pos, __u64 *stack, int stack_sz, pid_t pid)
 {
 	const struct blaze_symbolize_inlined_fn* inlined;
 	const struct blaze_syms *syms;
@@ -207,22 +210,22 @@ static void show_stack_trace(char *buffer, int *pos, __u64 *stack, int stack_sz,
 	}
 
 	if (!syms) {
-		*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, "  failed to symbolize addresses: %s\n", blaze_err_str(blaze_err_last()));
+		*pos += snprintf(buffer + *pos, buflen - *pos, "  failed to symbolize addresses: %s\n", blaze_err_str(blaze_err_last()));
 		return;
 	}
 
 	for (i = 0; i < stack_sz; i++) {
 		if (!syms || syms->cnt <= i || syms->syms[i].name == NULL) {
-			*pos += snprintf(buffer + *pos, sizeof(buffer) - *pos, "%016llx: <no-symbol>\n", stack[i]);
+			*pos += snprintf(buffer + *pos, buflen - *pos, "%016llx: <no-symbol>\n", stack[i]);
 			continue;
 		}
 
 		sym = &syms->syms[i];
-		print_frame(buffer, pos, sym->name, stack[i], sym->addr, sym->offset, &sym->code_info);
+		print_frame(buffer, buflen, pos, sym->name, stack[i], sym->addr, sym->offset, &sym->code_info);
 
 		for (j = 0; j < sym->inlined_cnt; j++) {
 			inlined = &sym->inlined[j];
-			print_frame(buffer, pos, inlined->name, 0, 0, 0, &inlined->code_info);
+			print_frame(buffer, buflen, pos, inlined->name, 0, 0, 0, &inlined->code_info);
 		}
 	}
 
@@ -324,6 +327,34 @@ void delete_allocs(char *buffer, uint64_t addr)
     }
 }
 
+void format_nanosecond_timestamp(char *buffer, int buflen, int *pos, long long timestamp_ns) {
+    // 1. 分离秒和纳秒部分
+    time_t seconds = timestamp_ns / 1000000000;
+    long nanoseconds = timestamp_ns % 1000000000;
+
+    // 2. 转换为本地时间
+    struct tm *timeinfo = localtime(&seconds);
+    if (timeinfo == NULL) {
+        return;
+    }
+
+    // 3. 格式化为字符串（精确到纳秒）
+    char buff[80];
+    strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", timeinfo);
+    *pos += snprintf(buffer + *pos, buflen - *pos, "%s.%09ld\n", buff, nanoseconds);
+}
+
+time_t get_boot_time() {
+    struct sysinfo info;
+    sysinfo(&info);  // 获取系统信息（包括 uptime）
+    return time(NULL) - info.uptime;  // boot_time = current_time - uptime
+}
+
+uint64_t convert_to_unix_time(uint64_t time_since_boot_ns) {
+    time_t boot_time = get_boot_time();  // 系统启动时间（秒）
+    return (uint64_t)boot_time * 1000000000ULL + time_since_boot_ns;
+}
+
 static int handle_event(void *ctx, void *data, size_t data_sz)
 {
     struct stacktrace_event *event = data;
@@ -331,19 +362,27 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
     static char buffer[2048] = { 0 };
     int pos = 0;
 
+	time_t seconds = event->timestamp_ns / 1000000000;
+    long nanoseconds = event->timestamp_ns % 1000000000;
+	pos += snprintf(buffer + pos, sizeof(buffer) - pos, "[%d.%d]", seconds, nanoseconds);
+
+	uint64_t unix_time_ns = convert_to_unix_time(event->timestamp_ns);
+
+	format_nanosecond_timestamp(buffer, sizeof(buffer), &pos, unix_time_ns);
+
 	pos += snprintf(buffer + pos, sizeof(buffer) - pos, "COMM: %s (pid=%d) @ CPU %d\n", event->comm, event->pid, event->cpu_id);
 
     if (event->evt_id == EVT_ID_FREE_IN)
     {
         pos += snprintf(buffer + pos, sizeof(buffer) - pos, "free: %p\n", (void *)event->address);
         pos += snprintf(buffer + pos, sizeof(buffer) - pos, "\n");
-        record_allocs(buffer, event->address);
+        delete_allocs(buffer, event->address);
         return 0;
     }
 
 	if (event->ustack_sz > 0) {
 		pos += snprintf(buffer + pos, sizeof(buffer) - pos, "alloc: %p, size: %llu\n", (void *)event->address, event->size);
-		show_stack_trace(buffer, &pos, event->ustack, event->ustack_sz / sizeof(__u64), event->pid);
+		show_stack_trace(buffer, sizeof(buffer), &pos, event->ustack, event->ustack_sz / sizeof(__u64), event->pid);
 	} else {
 		pos += snprintf(buffer + pos, sizeof(buffer) - pos, "No Userspace Stack\n");
 	}

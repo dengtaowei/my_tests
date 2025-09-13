@@ -29,6 +29,7 @@ struct stacktrace_event {
     __u32 evt_id;
     __u64 address;
     __u64 size;
+	__u64 timestamp_ns;
 };
 
 #endif /* __PROFILE_H_ */
