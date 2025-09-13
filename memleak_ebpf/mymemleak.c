@@ -364,7 +364,7 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 
 	time_t seconds = event->timestamp_ns / 1000000000;
     long nanoseconds = event->timestamp_ns % 1000000000;
-	pos += snprintf(buffer + pos, sizeof(buffer) - pos, "[%d.%d]", seconds, nanoseconds);
+	pos += snprintf(buffer + pos, sizeof(buffer) - pos, "[%ld.%ld]", seconds, nanoseconds);
 
 	uint64_t unix_time_ns = convert_to_unix_time(event->timestamp_ns);
 

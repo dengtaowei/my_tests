@@ -3,7 +3,7 @@ LIBDIR = $(PREFIX)/lib
 
 CFLAGS = -O2 -Wall
 LDFLAGS =
-LDLIBS = -lz -lzstd
+LDLIBS = -lz
 
 MAJOR = 1
 MINOR = 0.193

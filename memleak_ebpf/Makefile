@@ -5,9 +5,11 @@ CLANG ?= clang
 THIRD_PARTY_DIR := ../third_party
 LIBBPF_SRC := $(abspath $(THIRD_PARTY_DIR)/libbpf/src)
 LIBZ_SRC:= $(abspath $(THIRD_PARTY_DIR)/zlib)
+LIBELF_SRC:= $(abspath $(THIRD_PARTY_DIR)/libelf-0.193)
 BPFTOOL_SRC := $(abspath $(THIRD_PARTY_DIR)/bpftool/src)
 LIBBPF_OBJ := $(abspath $(OUTPUT)/libbpf.a)
-LIBZ_OBJ := $(abspath $(OUTPUT)/libz.a)
+LIBZ_OBJ := $(abspath $(OUTPUT)/lib/libz.a)
+LIBELF_OBJ := $(abspath $(OUTPUT)/lib/libelf.a)
 BPFTOOL_OUTPUT ?= $(abspath $(OUTPUT)/bpftool)
 BPFTOOL ?= $(BPFTOOL_OUTPUT)/bootstrap/bpftool
 LIBBLAZESYM_SRC := $(abspath $(THIRD_PARTY_DIR)/blazesym/)
@@ -97,6 +99,7 @@ clean:
 	$(call msg,CLEAN)
 	$(Q)rm -rf $(OUTPUT) $(APPS)
 	$(Q)$(MAKE) -C $(LIBZ_SRC) clean
+	$(Q)$(MAKE) -C $(LIBELF_SRC) clean
 
 $(OUTPUT) $(OUTPUT)/libbpf $(BPFTOOL_OUTPUT):
 	$(call msg,MKDIR,$@)
@@ -111,13 +114,22 @@ $(LIBBPF_OBJ): $(wildcard $(LIBBPF_SRC)/*.[ch] $(LIBBPF_SRC)/Makefile) | $(OUTPU
 		    install
 
 
-$(OUTPUT)/lib/libz.a::
-	cd $(LIBZ_SRC) && ./configure --prefix=$(OUTPUT) && make install
+# $(OUTPUT)/lib/libz.a::
+# 	$(Q)cd $(LIBZ_SRC) && ./configure --prefix=$(OUTPUT) && make install
 
 # Build libz
-$(LIBZ_OBJ): $(OUTPUT)/lib/libz.a | $(OUTPUT)
+$(LIBZ_OBJ): $(wildcard $(LIBZ_SRC)/*.[ch] $(LIBZ_SRC)/Makefile) | $(OUTPUT)
 	$(call msg,LIB,$@)
-	$(Q)cp $(OUTPUT)/lib/libz.a $(LIBZ_OBJ)
+	$(Q)cd $(LIBZ_SRC) && ./configure --prefix=$(OUTPUT) && make install
+	# $(Q)cp $(OUTPUT)/lib/libz.a $@
+
+# Build libelf
+$(LIBELF_OBJ): $(wildcard $(LIBELF_SRC)/*.[ch] $(LIBELF_SRC)/Makefile) $(LIBZ_OBJ) | $(OUTPUT)
+	$(call msg,LIB,$@)
+	$(Q)$(MAKE) -C $(LIBELF_SRC) BUILD_STATIC_ONLY=1		      \
+		    OBJDIR=$(dir $@)/libelf DESTDIR=$(OUTPUT)		      \
+		    LDFLAGS=-L$(OUTPUT)/lib			      \
+		    install
 
 # Build bpftool
 $(BPFTOOL): | $(BPFTOOL_OUTPUT)
@@ -133,7 +145,7 @@ $(LIBBLAZESYM_OBJ): $(LIBBLAZESYM_SRC)/target/$(LIBBLAZESYM_TARGET)/release/libb
 	$(Q)cp $(LIBBLAZESYM_SRC)/target/$(LIBBLAZESYM_TARGET)/release/libblazesym_c.a $@
 
 # Build BPF code
-$(OUTPUT)/%.bpf.o: %.bpf.c $(LIBBPF_OBJ) $(LIBZ_OBJ) $(wildcard %.h) $(VMLINUX) | $(OUTPUT) $(BPFTOOL)
+$(OUTPUT)/%.bpf.o: %.bpf.c $(LIBBPF_OBJ) $(LIBELF_OBJ) $(LIBZ_OBJ) $(wildcard %.h) $(VMLINUX) | $(OUTPUT) $(BPFTOOL)
 	$(call msg,BPF,$@)
 	$(Q)$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH)		      \
 		     $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES)		      \
@@ -157,9 +169,9 @@ $(patsubst %,$(OUTPUT)/%.o,$(BZS_APPS)): $(LIBBLAZESYM_OBJ)
 $(BZS_APPS): $(LIBBLAZESYM_OBJ)
 
 # Build application binary
-$(APPS): %: $(OUTPUT)/%.o $(LIBBPF_OBJ) $(LIBZ_OBJ) | $(OUTPUT)
+$(APPS): %: $(OUTPUT)/%.o $(LIBBPF_OBJ) $(LIBELF_OBJ) $(LIBZ_OBJ) | $(OUTPUT)
 	$(call msg,BINARY,$@)
-	$(Q)$(CC) $(CFLAGS) $^ $(ALL_LDFLAGS) -lelf -o $@
+	$(Q)$(CC) $(CFLAGS) $^ $(ALL_LDFLAGS) -o $@
 
 # delete failed targets
 .DELETE_ON_ERROR:
