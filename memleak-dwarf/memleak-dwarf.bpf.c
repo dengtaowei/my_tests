@@ -5,7 +5,7 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 
-#include "mymemleak.h"
+#include "memleak-dwarf.h"
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
