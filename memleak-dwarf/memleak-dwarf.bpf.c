@@ -9,6 +9,44 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
+
+#define PT_REGS_PARM5_ARM(ctx) ({\
+    u32 sp = (u32)PT_REGS_SP(ctx); \
+    u32 arg5; \
+    bpf_probe_read_kernel(&arg5, sizeof(arg5), (sp + 0x0)); \
+    arg5; \
+})
+
+#define PT_REGS_PARM6_ARM(ctx) ({\
+    u32 sp = (u32)PT_REGS_SP(ctx); \
+    u32 arg6; \
+    bpf_probe_read_kernel(&arg6, sizeof(arg6), (sp + 0x4)); \
+    arg6; \
+})
+
+#define pt_regs_param_0 PT_REGS_PARM1
+#define pt_regs_param_1 PT_REGS_PARM2
+#define pt_regs_param_2 PT_REGS_PARM3
+#define pt_regs_param_3 PT_REGS_PARM4
+#if defined(__TARGET_ARCH_arm)
+// arm32 前四个参数使用R0-R3寄存器，从第五个开始使用栈传递
+#define pt_regs_param_4 PT_REGS_PARM5_ARM
+#define pt_regs_param_5 PT_REGS_PARM6_ARM
+#else
+#define pt_regs_param_4 PT_REGS_PARM5
+#endif
+
+#if defined(__TARGET_ARCH_arm)
+struct my_pt_regs {
+	unsigned int uregs[18];
+};
+#define pt_regs my_pt_regs
+#define ctx_get_arg(ctx, index) (u32)pt_regs_param_##index((struct my_pt_regs*)ctx)
+#else
+#define ctx_get_arg(ctx, index) (void *)pt_regs_param_##index((struct pt_regs*)ctx)
+#endif
+
+
 const volatile bool trace_all = false;
 
 struct {
@@ -32,8 +70,9 @@ struct {
 
 static int gen_alloc_enter(size_t size)
 {
+    u64 m_size = (u64)size;
     const u64 pid_tgid = bpf_get_current_pid_tgid();
-	bpf_map_update_elem(&sizes, &pid_tgid, &size, BPF_ANY);
+	bpf_map_update_elem(&sizes, &pid_tgid, &m_size, BPF_ANY);
     if (trace_all)
 	    bpf_printk("malloc_enter size=%d\n", size);
 	return 0;
@@ -49,7 +88,7 @@ static int gen_alloc_exit2(void *ctx, u64 address)
 	u64 pid_tgid = bpf_get_current_pid_tgid();
 	int cpu_id = bpf_get_smp_processor_id();
 	struct stacktrace_event *event;
-	int cp;
+	// int cp;
 
     const u64* size = bpf_map_lookup_elem(&sizes, &pid_tgid);
     // if (!size)
@@ -68,11 +107,13 @@ static int gen_alloc_exit2(void *ctx, u64 address)
     event->evt_id = EVT_ID_GEN_ALLOC_RET;
     event->address = (__u64)address;
 	event->timestamp_ns = bpf_ktime_get_ns();
-    if (size)
+    if (size) {
         event->size = *size;
+    }
 
-	if (bpf_get_current_comm(event->comm, sizeof(event->comm)))
+	if (bpf_get_current_comm(event->comm, sizeof(event->comm))){
 		event->comm[0] = 0;
+    }
 
 	event->ustack_sz =
 		bpf_get_stack(ctx, event->ustack, sizeof(event->ustack), BPF_F_USER_STACK);
@@ -101,7 +142,7 @@ static int gen_free_enter(const void *address)
     int pid = bpf_get_current_pid_tgid() >> 32;
 	int cpu_id = bpf_get_smp_processor_id();
 	struct stacktrace_event *event;
-	int cp;
+	// int cp;
 
 	event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
 	if (!event)

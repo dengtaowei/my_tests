@@ -353,7 +353,7 @@ void record_allocs(char *buffer, uint64_t addr)
         return;
     }
     
-    sprintf(buff, "%s/0x%016lx.mem", env.folder, addr);
+    sprintf(buff, "%s/0x%016llx.mem", env.folder, addr);
     FILE *fp = fopen(buff, "w");
     if (!fp) {
         return;
@@ -376,10 +376,10 @@ void delete_allocs(char *buffer, uint64_t addr)
         return;
     }
     
-    sprintf(buff, "%s/0x%016lx.mem", env.folder, addr);
+    sprintf(buff, "%s/0x%016llx.mem", env.folder, addr);
     if (unlink(buff) < 0)
     {
-        printf("double free: 0x%016lx\n", addr);
+        printf("double free: 0x%016llx\n", addr);
         return;
     }
 }

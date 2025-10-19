@@ -13,15 +13,23 @@ USER_SKEL = ${TARGET:=.skel.h}
 
 COMMON_H = ${TARGET:=.h}
 
+ifeq ($(ARCH), x86)
+LDFLAGS=-L../third_party/install/$(ARCH)/lib -l:libbpf.a -ldw -llzma -lelf -lz
+else ifeq ($(ARCH), arm64)
+LDFLAGS=-L../third_party/install/$(ARCH)/lib -l:libbpf.a -ldw -lelf -lz
+else ifeq ($(ARCH), arm)
+LDFLAGS=-L../third_party/install/$(ARCH)/lib -l:libbpf.a -ldw -lelf -lz
+endif
+
 all: $(TARGET) $(BPF_OBJ)
 .PHONY: app
 
 $(TARGET): $(USER_C) $(USER_SKEL) $(COMMON_H)
-	$(CC) -Wall -O0 -g3 -DBPF_DEBUG -DNO_BTF -o $(TARGET) $(USER_C) --static -L../third_party/install/$(ARCH)/lib -l:libbpf.a -ldw -llzma -lelf -lz
+	$(CC) -Wall -O0 -g3 -DBPF_DEBUG -DNO_BTF -o $(TARGET) $(USER_C) --static $(LDFLAGS)
 
 direct:
 	cp ~/Desktop/nfs_share/$(USER_SKEL) ./
-	$(CC) -Wall -O0 -g3 -DBPF_DEBUG -DNO_BTF -o $(TARGET) $(USER_C) --static -L../third_party/install/$(ARCH)/lib -l:libbpf.a -ldw -llzma -lelf -lz
+	$(CC) -Wall -O0 -g3 -DBPF_DEBUG -DNO_BTF -o $(TARGET) $(USER_C) --static $(LDFLAGS)
 	cp $(TARGET) ~/Desktop/nfs_share
 
 NOSTDINC_FLAGS	+= -nostdinc -isystem $(shell $(CC) -print-file-name=include)
