@@ -6,7 +6,7 @@
 set -e
 
 # 默认参数
-ZLIB_DIR="zlib"
+LIBBPF_DIR="libbpf/src"
 INSTALL_PREFIX="$PWD/install"
 WORK_DIR="$PWD"
 ARCH=${1:-"x86"}  # 默认x86_64架构
@@ -38,10 +38,10 @@ esac
 
 # 配置编译环境
 configure_build() {
-    cd "${ZLIB_DIR}"
+    cd "${LIBBPF_DIR}"
     
     # 清理旧配置
-    [ -f Makefile ] && make distclean
+    [ -f Makefile ] && make clean
     
     echo "[INFO] 配置 ${ARCH} 架构..."
     
@@ -73,18 +73,19 @@ configure_build() {
     echo "[INFO] 使用库路径: ${LIB_PATH}"
 
 
-    ./configure \
-        --host="${HOST}" \
-        --prefix="${INSTALL_PREFIX}/${ARCH}"
+    # ./configure \
+    #     --host="${HOST}" \
+    #     --prefix="${INSTALL_PREFIX}/${ARCH}"
 }
 
 # 编译安装
 build_install() {
     echo "[INFO] 开始编译..."
-    make -j$(nproc)
+    make -j$(nproc)  BUILD_STATIC_ONLY=1		      \
+		    INCLUDEDIR= LIBDIR= UAPIDIR=
     
     echo "[INFO] 安装到 ${INSTALL_PREFIX}/${ARCH}"
-    make install
+    make OBJDIR=${INSTALL_PREFIX}/${ARCH}/lib PREFIX=${INSTALL_PREFIX}/${ARCH} install
     
     echo "[INFO] 编译完成!"
     echo "已安装到: ${INSTALL_PREFIX}/${ARCH}"

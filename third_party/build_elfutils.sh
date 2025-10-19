@@ -9,11 +9,11 @@ set -e
 ELFUTILS_VERSION="0.193"
 INSTALL_PREFIX="$PWD/install"
 WORK_DIR="$PWD"
-ARCH=${1:-"x86_64"}  # 默认x86_64架构
+ARCH=${1:-"x86"}  # 默认x86_64架构
 
 # 设置不同架构的交叉编译工具链前缀
 case "$ARCH" in
-    x86_64)
+    x86)
         HOST="x86_64-linux-gnu"
         TOOLCHAIN_PREFIX="x86_64-linux-gnu"
         ;;
