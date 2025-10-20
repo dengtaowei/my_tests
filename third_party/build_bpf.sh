@@ -85,7 +85,9 @@ build_install() {
 		    INCLUDEDIR= LIBDIR= UAPIDIR=
     
     echo "[INFO] 安装到 ${INSTALL_PREFIX}/${ARCH}"
-    make OBJDIR=${INSTALL_PREFIX}/${ARCH}/lib PREFIX=${INSTALL_PREFIX}/${ARCH} install
+    make OBJDIR=${INSTALL_PREFIX}/${ARCH}/lib PREFIX=${INSTALL_PREFIX}/${ARCH} \
+        LDFLAGS=-L${INSTALL_PREFIX}/${ARCH}/lib \
+        install
     
     echo "[INFO] 编译完成!"
     echo "已安装到: ${INSTALL_PREFIX}/${ARCH}"
