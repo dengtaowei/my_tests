@@ -85,8 +85,8 @@ def determine_field_type(field, structs):
         'timeout': 'unsigned long',
         
         # 缓冲区相关
-        'data': 'void *',
-        'data_end': 'void *',
+        # 'data': 'void *',
+        # 'data_end': 'void *',
         'seq': 'u32',
     }
     
@@ -106,7 +106,7 @@ def determine_field_type(field, structs):
         return size_map[size]
     
     # 默认使用字节数组
-    return f"unsigned char __{name}_buf[{size}]"
+    return f"unsigned char [{size}]"
 
 def generate_c_code(structs):
     # 按照依赖关系排序结构体
@@ -179,7 +179,7 @@ def generate_c_code(structs):
             end_offset = struct['size'] - 1
             code += f"    unsigned char __padding{padding_id}[{padding_size}]; /* [{prev_offset}-{end_offset}] {padding_size} bytes */\n"
         
-        code += f"}} __attribute__((packed)); /* total size: {struct['size']} bytes */\n\n"
+        code += f"}} __attribute__((__packed__)); /* total size: {struct['size']} bytes */\n\n"
     
     code += "#endif /* __GENERATED_STRUCTS_H__ */\n"
     return code
