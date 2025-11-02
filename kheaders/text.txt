@@ -23,6 +23,8 @@ FIELD: skc_dport offset=12 size=2
 FIELD: skc_num offset=14 size=2
 FIELD: skc_family offset=16 size=2
 FIELD: skc_state offset=18 size=1
+FIELD: skc_v6_daddr offset=56 size=16 type=in6_addr
+FIELD: skc_v6_rcv_saddr offset=72 size=16 type=in6_addr
 # STRUCT_END struct sock_common
 
 # STRUCT_BEGIN struct tcp_skb_cb 48

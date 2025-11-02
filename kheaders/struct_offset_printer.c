@@ -60,6 +60,15 @@ static void print_sock_common_fields(void)
     PRINT_STRUCT_FIELD(struct sock_common, skc_num);
     PRINT_STRUCT_FIELD(struct sock_common, skc_family);
     PRINT_STRUCT_FIELD(struct sock_common, skc_state);
+#if IS_ENABLED(CONFIG_IPV6)
+    pr_info("FIELD: skc_v6_daddr offset=%zu size=%zu type=in6_addr\n",
+            offsetof(struct sock_common, skc_v6_daddr),
+            sizeof(((struct sock_common *)0)->skc_v6_daddr));
+    pr_info("FIELD: skc_v6_rcv_saddr offset=%zu size=%zu type=in6_addr\n",
+            offsetof(struct sock_common, skc_v6_rcv_saddr),
+            sizeof(((struct sock_common *)0)->skc_v6_rcv_saddr));
+#endif
+
     PRINT_STRUCT_END(struct sock_common);
 }
 
