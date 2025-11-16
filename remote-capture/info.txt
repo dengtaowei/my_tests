@@ -1,0 +1,4 @@
+pyinstaller --onefile --windowed your_script.py
+
+sudo src/airtrace -m 08:3b:e9:14:94:f7 -o - | nc 192.168.1.6 12345
+sudo tcpdump -i ens32 -p icmp6 -U -w - | nc 192.168.1.6 12345
