@@ -57,6 +57,7 @@ NOSTDINC_FLAGS	+= -nostdinc -isystem $(shell $(CC) -print-file-name=include)
 		-Wno-unused-function -Wno-compare-distinct-pointer-types -Wuninitialized \
 		-D__TARGET_ARCH_$(ARCH) -DBPF_NO_PRESERVE_ACCESS_INDEX \
 		-DBPF_NO_GLOBAL_DATA \
+		-DNO_BTF \
 		$(NOSTDINC_FLAGS)  \
 		-D__KERNEL__ -Wno-unused-value -Wno-pointer-sign -Wno-compare-distinct-pointer-types \
 		-Wno-gnu-variable-sized-type-not-at-end -Wno-address-of-packed-member \
