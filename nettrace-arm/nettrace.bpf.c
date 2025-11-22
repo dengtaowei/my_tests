@@ -80,7 +80,7 @@
 	DECLARE_FAKE_FUNC(fake__##name)
 #define DEFINE_TP(name, cata, tp, skb_index, offset)		\
 	DEFINE_TP_INIT(name, cata, tp,				\
-		       .skb = *(void **)(ctx + offset))
+		       .skb = (u32)(*(void **)(ctx + offset)))
 #define TP_DEFAULT(name, cata, tp, skb, offset)			\
 	DEFINE_TP(name, cata, tp, skb, offset)			\
 	{							\

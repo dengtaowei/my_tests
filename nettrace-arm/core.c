@@ -772,6 +772,19 @@ DEFINE_KPROBE_INIT(inet_listen, inet_listen, 2,
 	return default_handle_entry(info);
 }
 
+// static inline int fake__ping_lookup(context_info_t *info);
+// SEC("kprobe/pinglookup")
+// int __trace_ping_lookup(struct pt_regs *ctx)
+// {
+//     context_info_t info = {.func = 136, .ctx = ctx, .args = (void *)({ int _key = 0; void * _v = bpf_map_lookup_elem(&m_config, &_key); if (!_v) return 0; (pkt_args_t *)_v; }), .skb = (u32)(((struct pt_regs *)ctx)->uregs[1]), .sk = ((void *)0)};
+// 	bpf_printk("dtwdebug skb %llx 1 = %llx, 2 = %llx 3 = %llx\n", info.skb, ctx->uregs[0], ctx->uregs[1], ctx->uregs[2]);
+//     if (pre_handle_entry(&info, 136))
+//         return 0;
+//     handle_entry_finish(&info, fake__ping_lookup(&info));
+//     return 0;
+// }
+// static inline int fake__ping_lookup(context_info_t *info) { return default_handle_entry(info); }
+
 // DEFINE_KPROBE_INIT(tcp_ack_update_rtt, tcp_ack_update_rtt, 6,
 // 		   .sk = ctx_get_arg(ctx, 0))
 // {
