@@ -131,8 +131,10 @@ enum {
 };
 
 struct list_head {
-	struct list_head *next;
-	struct list_head *prev;
+	// struct list_head *next;
+	// struct list_head *prev;
+	u32 next;
+	u32 prev;
 };
 
 struct xt_table {
@@ -142,7 +144,8 @@ struct xt_table {
 	struct module *me;
 	u8 af;
 	int priority;
-	int (*table_init)(struct net *);
+	// int (*table_init)(struct net *);
+	u32 table_init;
 	const char name[32];
 };
 
@@ -362,8 +365,10 @@ struct Qdisc {
 typedef unsigned int nf_hookfn(void *, struct sk_buff *, const struct nf_hook_state *);
 
 struct nf_hook_entry {
-	nf_hookfn			*hook;
-	void				*priv;
+	// nf_hookfn			*hook;
+	// void				*priv;
+	u32 hook;
+	u32 priv;
 };
 
 struct nf_hook_entries
@@ -380,13 +385,16 @@ struct user_pt_regs {
 };
 
 struct pt_regs {
-	long unsigned int uregs[18];
+	// long unsigned int uregs[18];
+	unsigned int uregs[18];
 };
 
 struct sk_buff {
     unsigned char __padding1[8]; /* [0-7] 8 bytes */
-    struct net_device * dev; /* [8-11] 4 bytes */
-    struct sock * sk; /* [12-15] 4 bytes */
+    // struct net_device * dev; /* [8-11] 4 bytes */
+	u32 dev;
+    // struct sock * sk; /* [12-15] 4 bytes */
+	u32 sk;
     unsigned char __padding2[8]; /* [16-23] 8 bytes */
     unsigned char  cb[48]; /* [24-71] 48 bytes */
     unsigned char __padding3[40]; /* [72-111] 40 bytes */
@@ -397,7 +405,8 @@ struct sk_buff {
     u16 network_header; /* [144-145] 2 bytes */
     u16 mac_header; /* [146-147] 2 bytes */
     unsigned char __padding5[8]; /* [148-155] 8 bytes */
-    void * head; /* [156-159] 4 bytes */
+    // void * head; /* [156-159] 4 bytes */
+	u32 head;
     unsigned char __padding6[16]; /* [160-175] 16 bytes */
 } __attribute__((__packed__)); /* total size: 176 bytes */
 
@@ -411,7 +420,8 @@ struct sock;
 
 struct socket {
     unsigned char __padding1[16]; /* [0-15] 16 bytes */
-    struct sock * sk; /* [16-19] 4 bytes */
+    // struct sock * sk; /* [16-19] 4 bytes */
+	u32 sk;
     unsigned char __padding2[108]; /* [20-127] 108 bytes */
 } __attribute__((__packed__)); /* total size: 128 bytes */
 
