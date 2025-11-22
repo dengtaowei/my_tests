@@ -416,8 +416,8 @@ static inline int probe_parse_sk(struct sock *sk, sock_t *ske,
 			goto err;
 		break;
 	case AF_INET6:
-		bpf_probe_read_kernel(saddr, 16, &skc->skc_v6_rcv_saddr);
-		bpf_probe_read_kernel(daddr, 16, &skc->skc_v6_daddr);
+		// bpf_probe_read_kernel(saddr, 16, &skc->skc_v6_rcv_saddr);
+		// bpf_probe_read_kernel(daddr, 16, &skc->skc_v6_daddr);
 		if (filter_ipv6_check(args, saddr, daddr))
 			goto err;
 		l3_proto = ETH_P_IPV6;
