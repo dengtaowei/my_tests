@@ -526,7 +526,7 @@ DEFINE_TP(kfree_skb, skb, kfree_skb, 0, 8)
 			reason = *(int *)info_tp_args(info, 28, 2);
 	} else if (info->args->drop_reason) {
 		/* use probe, or we will fail if drop reason not supported */
-		reason = _(*(int *)info_tp_args(info, 28, 0));
+		reason = _(*(int *)info_tp_args(info, 20, 0));
 	}
 
 	DECLARE_EVENT(drop_event_t, e)
