@@ -35,15 +35,17 @@ else ifeq ($(ARCH), arm)
 LDFLAGS=-L../third_party/install/$(ARCH)/lib -l:libbpf.a -ldw -lelf -lz
 endif
 
+COMMON_DEF = -D__F_STACK_TRACE -DBPF_NO_GLOBAL_DATA -DNT_DISABLE_IPV6 -D__F_NO_NF_HOOK_ENTRIES -DBPF_DEBUG -DNO_BTF
+
 all: $(TARGET) $(BPF_OBJ)
 .PHONY: app
 
 $(TARGET): $(USER_C) $(USER_SKEL) $(COMMON_H)
-	$(CC) -Wall -O0 -g3 -DBPF_DEBUG -DNO_BTF -DBPF_NO_GLOBAL_DATA -DNT_DISABLE_IPV6 -D__F_NO_NF_HOOK_ENTRIES -o $(TARGET) $(USER_C) --static $(LDFLAGS)
+	$(CC) -Wall -O0 -g3 $(COMMON_DEF) -o $(TARGET) $(USER_C) --static $(LDFLAGS)
 
 direct:
 	cp ~/Desktop/nfs_share/$(USER_SKEL) ./
-	$(CC) -Wall -O0 -g3 -DBPF_DEBUG -DNO_BTF -o $(TARGET) $(USER_C) --static $(LDFLAGS)
+	$(CC) -Wall -O0 -g3 $(COMMON_DEF) -o $(TARGET) $(USER_C) --static $(LDFLAGS)
 	cp $(TARGET) ~/Desktop/nfs_share
 
 NOSTDINC_FLAGS	+= -nostdinc -isystem $(shell $(CC) -print-file-name=include)
@@ -52,19 +54,16 @@ NOSTDINC_FLAGS	+= -nostdinc -isystem $(shell $(CC) -print-file-name=include)
 	clang -target bpf -O2 -S -Wall -fno-asynchronous-unwind-tables              \
 		-Wno-incompatible-pointer-types-discards-qualifiers             \
 		$< -emit-llvm -Wno-unknown-attributes -I./ \
+		$(COMMON_DEF) \
 		$(BPF_FLAGS) \
 		-g \
 		-Wno-unused-function -Wno-compare-distinct-pointer-types -Wuninitialized \
 		-D__TARGET_ARCH_$(ARCH) -DBPF_NO_PRESERVE_ACCESS_INDEX \
-		-DBPF_NO_GLOBAL_DATA \
-		-DNO_BTF \
-		-DBPF_DEBUG \
-		-D__F_NO_NF_HOOK_ENTRIES \
 		$(NOSTDINC_FLAGS)  \
 		-D__KERNEL__ -Wno-unused-value -Wno-pointer-sign -Wno-compare-distinct-pointer-types \
 		-Wno-gnu-variable-sized-type-not-at-end -Wno-address-of-packed-member \
 		-Wno-tautological-compare -Wno-unknown-warning-option \
-		-Wno-frame-address -DNT_DISABLE_IPV6 -Xclang        \
+		-Wno-frame-address -Xclang        \
 		-Wno-int-conversion \
 		-disable-llvm-passes -o - |                                     \
 		opt -O2 -mtriple=bpf-pc-linux |                                 \
