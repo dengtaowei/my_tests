@@ -15,7 +15,7 @@
 #define pt_regs_param_3 PT_REGS_PARM4
 #define pt_regs_param_4 PT_REGS_PARM5
 
-#define ctx_get_arg(ctx, index) (void *)pt_regs_param_##index((struct pt_regs*)ctx)
+#define ctx_get_arg(ctx, index) (u32)pt_regs_param_##index((struct pt_regs*)ctx)
 #define info_get_arg(info, index) ctx_get_arg(info->ctx, index)
 
 #define DECLARE_FAKE_FUNC(name)					\

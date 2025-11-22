@@ -39,7 +39,7 @@ all: $(TARGET) $(BPF_OBJ)
 .PHONY: app
 
 $(TARGET): $(USER_C) $(USER_SKEL) $(COMMON_H)
-	$(CC) -Wall -O0 -g3 -DBPF_DEBUG -DNO_BTF -DBPF_NO_GLOBAL_DATA -D__F_NO_NF_HOOK_ENTRIES -o $(TARGET) $(USER_C) --static $(LDFLAGS)
+	$(CC) -Wall -O0 -g3 -DBPF_DEBUG -DNO_BTF -DBPF_NO_GLOBAL_DATA -DNT_DISABLE_IPV6 -D__F_NO_NF_HOOK_ENTRIES -o $(TARGET) $(USER_C) --static $(LDFLAGS)
 
 direct:
 	cp ~/Desktop/nfs_share/$(USER_SKEL) ./

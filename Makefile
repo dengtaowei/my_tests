@@ -25,7 +25,7 @@ SCRIPT		= $(ROOT)/script
 export SCRIPT
 
 all clean:
-	make -C memleak-dwarf $@
+	make -C nettrace-arm $@
 
 direct:
 	make -C memleak-dwarf $@

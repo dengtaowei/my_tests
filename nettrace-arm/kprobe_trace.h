@@ -162,12 +162,10 @@
 
 #define TRACE_MAX 162
 #define DEFINE_ALL_PROBES(FN, FN_tp, FNC)		\
-	FN_tp(napi_gro_receive_entry, net, napi_gro_receive_entry, 3, 24)	\
 	FN(dev_gro_receive, 1, , )	\
 	FN(enqueue_to_backlog, 0, , 3)	\
 	FN(netif_receive_generic_xdp, 0, , )	\
 	FN(xdp_do_generic_redirect, 1, , 4)	\
-	FN_tp(__netif_receive_skb_core, net, netif_receive_skb, 0, 8)	\
 	FN(RtmpOsPktRcvHandle, 0, , )	\
 	FN(__dev_queue_xmit, 0, , 2)	\
 	FN(dev_hard_start_xmit, 0, , )	\
@@ -187,7 +185,6 @@
 	FN(br_nf_forward_arp, 1, , )	\
 	FN(br_nf_post_routing, 1, , )	\
 	FN(arp_rcv, 0, , )	\
-	FN(arp_process, 2, , )	\
 	FN(bond_dev_queue_xmit, 1, , )	\
 	FN(__iptunnel_pull_header, 0, , )	\
 	FN(vxlan_rcv, 1, 0, )	\
@@ -273,7 +270,6 @@
 	FN(tcp_send_probe0, , 0, )	\
 	FN(__inet_lookup_listener, 2, , 10)	\
 	FN(inet6_lookup_listener, 2, , 10)	\
-	FN_tp(tcp_bad_csum, tcp, tcp_bad_csum, 0, 8)	\
 	FN(tcp_sendmsg_locked, , 0, )	\
 	FN(tcp_skb_entail, 1, 0, )	\
 	FN(skb_entail, 1, 0, )	\
@@ -296,7 +292,6 @@
 	FN(ping_rcv, 0, , )	\
 	FN(__ping_queue_rcv_skb, 1, , )	\
 	FN(ping_queue_rcv_skb, 1, , )	\
-	FN(ping_lookup, 1, , )	\
 	FNC(inet_listen)	\
 	FN(tcp_v4_destroy_sock, , 0, )	\
 	FN(tcp_close, , 0, )	\
@@ -317,7 +312,6 @@
 	FN(tcp_rcv_spurious_retrans, 1, 0, 2)	\
 	FN(tcp_dsack_set, , 0, 3)	\
 	FN(skb_clone, 0, , )	\
-	FN_tp(consume_skb, skb, consume_skb, 0, 8)	\
 	FNC(kfree_skb)	\
 	FN(__kfree_skb, 0, , )	\
 	FN(kfree_skb_partial, 0, , )	\
