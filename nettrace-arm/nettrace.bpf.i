@@ -1908,11 +1908,7 @@ static inline __attribute__((always_inline)) int probe_parse_skb(struct sk_buff 
     parse_ctx_t __ctx, *ctx = &__ctx;
     u16 l3_proto;
     void *l3;
-    {
-        if (({ int _key = 0; void * _v = bpf_map_lookup_elem(&m_config, &_key); if (!_v) return 0; (pkt_args_t *)_v; })->bpf_debug)
-            ({ char ____fmt[] = "nettrace: ""skb=%llx, ""dtwdebug""\n"; bpf_trace_printk(____fmt, sizeof(____fmt), (u64)(void *)skb); });
-    };
-    return -1;
+
     ctx->network_header = ({ typeof((skb)->network_header) __r; ({ bpf_probe_read_kernel((void *)(&__r), sizeof(*(&__r)), &((typeof(((skb))))(((skb))))->network_header); }); __r; });
     ctx->mac_header = ({ typeof((skb)->mac_header) __r; ({ bpf_probe_read_kernel((void *)(&__r), sizeof(*(&__r)), &((typeof(((skb))))(((skb))))->mac_header); }); __r; });
     ctx->data = ({ typeof((skb)->head) __r; ({ bpf_probe_read_kernel((void *)(&__r), sizeof(*(&__r)), &((typeof(((skb))))(((skb))))->head); }); __r; });
@@ -1927,7 +1923,7 @@ static inline __attribute__((always_inline)) int probe_parse_skb(struct sk_buff 
         int family;
 
         sk = sk ?: ({ typeof((skb)->sk) __r; ({ bpf_probe_read_kernel((void *)(&__r), sizeof(*(&__r)), &((typeof(((skb))))(((skb))))->sk); }); __r; });
-# 648 "./skb_parse.h"
+# 647 "./skb_parse.h"
         if (!ctx->network_header)
         {
             if (!sk)
@@ -7129,7 +7125,7 @@ __attribute__((section("kprobe/"
 # 509 "./core.c"
 int __trace_ping_lookup(struct pt_regs *ctx)
 {
-    context_info_t info = {.func = 136, .ctx = ctx, .args = (void *)({ int _key = 0; void * _v = bpf_map_lookup_elem(&m_config, &_key); if (!_v) return 0; (pkt_args_t *)_v; }), .skb = (u32)(((struct pt_regs *)ctx)->uregs[1]), .sk = ((void *)0)};
+    context_info_t info = {.func = 136, .ctx = ctx, .args = (void *)({ int _key = 0; void * _v = bpf_map_lookup_elem(&m_config, &_key); if (!_v) return 0; (pkt_args_t *)_v; }), .skb = (u32)(((struct pt_regs *)ctx)->uregs[0]), .sk = ((void *)0)};
     if (pre_handle_entry(&info, 136))
         return 0;
     handle_entry_finish(&info, fake__ping_lookup(&info));
@@ -7916,7 +7912,7 @@ static inline int fake__kfree_skb(context_info_t *info)
     else if (info->args->drop_reason)
     {
 
-        reason = ({ typeof(*(int *)((void *)(info->ctx) + 28)) ____tmp; bpf_probe_read_kernel(&____tmp, sizeof(*&*(int *)((void *)(info->ctx) + 28)), &*(int *)((void *)(info->ctx) + 28)); ____tmp; });
+        reason = ({ typeof(*(int *)((void *)(info->ctx) + 20)) ____tmp; bpf_probe_read_kernel(&____tmp, sizeof(*&*(int *)((void *)(info->ctx) + 20)), &*(int *)((void *)(info->ctx) + 20)); ____tmp; });
     }
 
     pure_drop_event_t __attribute__((__unused__)) * e;
@@ -7932,7 +7928,7 @@ static inline int fake__kfree_skb(context_info_t *info)
         (*(volatile typeof(e) *)&e) = ((void *)info->e + ((unsigned long)&((drop_event_t *)0)->__event_filed));
     }
 
-    e->location = *(u64 *)((void *)(info->ctx) + 16);
+    e->location = *(u32 *)((void *)(info->ctx) + 12);
     e->reason = reason;
 
     return ({ int err = handle_entry(info); if (!err) do_event_output(info, (info->args->detail ? sizeof(__detail_e) : sizeof(__e))); err; });
@@ -8443,17 +8439,17 @@ static inline int fake__inet_listen(context_info_t *info)
 {
     return default_handle_entry(info);
 }
-# 815 "./core.c"
+# 828 "./core.c"
 char _license[]
-# 815 "./core.c"
+# 828 "./core.c"
 #pragma GCC diagnostic push
-# 815 "./core.c"
+# 828 "./core.c"
 #pragma GCC diagnostic ignored "-Wignored-attributes"
-# 815 "./core.c"
+# 828 "./core.c"
     __attribute__((section("license"), used))
-# 815 "./core.c"
+# 828 "./core.c"
 #pragma GCC diagnostic pop
-# 815 "./core.c"
+# 828 "./core.c"
     = "GPL";
 # 96 "nettrace.bpf.c" 2
 
