@@ -531,7 +531,7 @@ DEFINE_TP(kfree_skb, skb, kfree_skb, 0, 8)
 
 	DECLARE_EVENT(drop_event_t, e)
 
-	e->location = *(u64 *)info_tp_args(info, 16, 1);
+	e->location = *(u32 *)info_tp_args(info, 12, 1);
 	e->reason = reason;
 
 	return handle_entry_output(info, e);
