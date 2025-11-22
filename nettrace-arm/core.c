@@ -644,13 +644,30 @@ bpf_qdisc_handle(context_info_t *info, struct Qdisc *q)
 	return handle_entry_output(info, e);
 }
 
-DEFINE_TP(qdisc_dequeue, qdisc, qdisc_dequeue, 3, 32)
+DEFINE_TP(qdisc_dequeue, qdisc, qdisc_dequeue, 3, 20)
 {
 	struct Qdisc *q = *(struct Qdisc **)info_tp_args(info, 8, 0);
 	return bpf_qdisc_handle(info, q);
 }
+// static inline int fake__qdisc_dequeue(context_info_t *info);
+// SEC("tp/qdisc/qdisc_dequeue")
+// int __trace_qdisc_dequeue(unsigned char *ctx)
+// {
+// 	u32 skb = 0;
+// 	bpf_probe_read_kernel(&skb, sizeof(skb), ctx + 20);
+//     context_info_t info = {.func = 14, .ctx = ctx, .args = (void *)({ int _key = 0; void * _v = bpf_map_lookup_elem(&m_config, &_key); if (!_v) return 0; (pkt_args_t *)_v; }), .skb = (struct sk_buff *)skb};
+//     if (pre_handle_entry(&info, 14))
+//         return 0;
+//     handle_entry_finish(&info, fake__qdisc_dequeue(&info));
+//     return 0;
+// }
+// static inline int fake__qdisc_dequeue(context_info_t *info)
+// {
+//     struct Qdisc *q = *(struct Qdisc **)((void *)(info->ctx) + 8);
+//     return bpf_qdisc_handle(info, q);
+// }
 
-DEFINE_TP(qdisc_enqueue, qdisc, qdisc_enqueue, 2, 24)
+DEFINE_TP(qdisc_enqueue, qdisc, qdisc_enqueue, 2, 16)
 {
 	struct Qdisc *q = *(struct Qdisc **)info_tp_args(info, 8, 0);
 	return bpf_qdisc_handle(info, q);

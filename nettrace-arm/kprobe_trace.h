@@ -162,7 +162,7 @@
 
 #define TRACE_MAX 162
 #define DEFINE_ALL_PROBES(FN, FN_tp, FNC)		\
-	FN_tp(napi_gro_receive_entry, net, napi_gro_receive_entry, 3, 24)	\
+	FN_tp(napi_gro_receive_entry, net, napi_gro_receive_entry, 3, 20)	\
 	FN(dev_gro_receive, 1, , )	\
 	FN(enqueue_to_backlog, 0, , 3)	\
 	FN(netif_receive_generic_xdp, 0, , )	\
