@@ -256,65 +256,43 @@ struct ipv6hdr
     };
 } __attribute__((__packed__));
 
-struct tcp_sock
-{
-    char fill_1[1496];
-    u32 rcv_nxt; // dtwdebug /*  1496     4 */
-    char fill_2[40];
-    u32 snd_una; // dtwdebug /*  1540     4 */
-    char fill_3[212];
-    u32 packets_out; // dtwdebug /*  1756     4 */
-    char fill_4[0];
-    u32 retrans_out; // dtwdebug /*  1760     4 */
-    char fill_5[540];
-} __attribute__((__packed__));  // 2304
+struct tcp_sock {
+    unsigned char __padding1[1008]; /* [0-1007] 1008 bytes */
+    u32 rcv_nxt; /* [1008-1011] 4 bytes */
+    unsigned char __padding2[40]; /* [1012-1051] 40 bytes */
+    u32 snd_una; /* [1052-1055] 4 bytes */
+    unsigned char __padding3[196]; /* [1056-1251] 196 bytes */
+    u32 packets_out; /* [1252-1255] 4 bytes */
+    u32 retrans_out; /* [1256-1259] 4 bytes */
+    unsigned char __padding4[468]; /* [1260-1727] 468 bytes */
+} __attribute__((__packed__)); /* total size: 1728 bytes */
 
-struct timer_list
-{
-    char fill_1[16];
-    unsigned long		expires; // /*  16    8 */
-    char fill_2[16];
-} __attribute__((__packed__));  // 40
+struct timer_list {
+    unsigned char __padding1[8]; /* [0-7] 8 bytes */
+    unsigned long expires; /* [8-11] 4 bytes */
+    unsigned char __padding2[8]; /* [12-19] 8 bytes */
+} __attribute__((__packed__)); /* total size: 20 bytes */
 
-struct inet_connection_sock
-{
-    char fill_1[1160];
-    unsigned long icsk_timeout;             /*  1160 8 */
-    struct timer_list icsk_retransmit_timer; /*  1168 40 */
-    char fill_2[105];
-    __u8 icsk_retransmits; /*  1313 1 */
-    __u8 icsk_pending;     /*  1314 1 */
-    char fill_3[157];
-} __attribute__((__packed__));  // 1472
+struct inet_connection_sock {
+    unsigned char __padding1[740]; /* [0-739] 740 bytes */
+    u32 icsk_timeout; /* [740-743] 4 bytes */
+    struct timer_list icsk_retransmit_timer; /* [744-763] 20 bytes */
+    unsigned char __padding2[61]; /* [764-824] 61 bytes */
+    u8 icsk_retransmits; /* [825-825] 1 bytes */
+    u8 icsk_pending; /* [826-826] 1 bytes */
+    unsigned char __padding3[157]; /* [827-983] 157 bytes */
+} __attribute__((__packed__)); /* total size: 984 bytes */
 
-struct sock_common
-{
-    union
-    {
-        __addrpair skc_addrpair; /*     0     4 */
-        struct
-        {
-            __be32 skc_daddr;     /*     0     4 */
-            __be32 skc_rcv_saddr; /*     4     4 */
-        };
-    };
-    char fill_1[4];
-    union
-    {
-        __portpair skc_portpair; /*    12     2 */
-        struct
-        {
-            __be16 skc_dport; /*    12     2 */
-            __u16 skc_num;    /*    14     2 */
-        };
-    };
-    short unsigned int skc_family;    /*    16     2 */
-    volatile unsigned char skc_state; /*    18     1 */
-    char fill_2[37];
-    struct in6_addr skc_v6_daddr;     /*    56    16 */
-    struct in6_addr skc_v6_rcv_saddr; /*    72    16 */
-    char fill_3[48];
-} __attribute__((__packed__));  // 136
+struct sock_common {
+    __be32 skc_daddr; /* [0-3] 4 bytes */
+    __be32 skc_rcv_saddr; /* [4-7] 4 bytes */
+    unsigned char __padding1[4]; /* [8-11] 4 bytes */
+    __be16 skc_dport; /* [12-13] 2 bytes */
+    u16 skc_num; /* [14-15] 2 bytes */
+    u16 skc_family; /* [16-17] 2 bytes */
+    u8 skc_state; /* [18-18] 1 bytes */
+    unsigned char __padding2[61]; /* [19-79] 61 bytes */
+} __attribute__((__packed__)); /* total size: 80 bytes */
 
 struct ip_esp_hdr
 {
@@ -324,13 +302,12 @@ struct ip_esp_hdr
 };
 
 
-struct tcp_skb_cb
-{
-    __u32 seq; /*     0     4 */
-    char fill_1[8];
-    __u8 tcp_flags; /*    12     1 */
-    char fill_2[35];
-} __attribute__((__packed__));  // 48
+struct tcp_skb_cb {
+    u32 seq; /* [0-3] 4 bytes */
+    unsigned char __padding1[8]; /* [4-11] 8 bytes */
+    u8 tcp_flags; /* [12-12] 1 bytes */
+    unsigned char __padding2[35]; /* [13-47] 35 bytes */
+} __attribute__((__packed__)); /* total size: 48 bytes */
 
 struct ethhdr
 {
@@ -339,29 +316,26 @@ struct ethhdr
     __be16 h_proto;
 } __attribute__((__packed__));
 
-struct __sk_buff
-{
-    char fill_1[76];
-    __u32 data;     /*    76     4 */
-    __u32 data_end; /*    80     4 */
-    char fill_2[108];
-} __attribute__((__packed__));  // 192
+struct __sk_buff {
+    unsigned char __padding1[76]; /* [0-75] 76 bytes */
+    u32 data; /* [76-79] 4 bytes */
+    u32 data_end; /* [80-83] 4 bytes */
+    unsigned char __padding2[108]; /* [84-191] 108 bytes */
+} __attribute__((__packed__)); /* total size: 192 bytes */
 
-struct netdev_queue
-{
-    char fill_1[136];
-    unsigned long trans_start; /*   136     8 */
-    unsigned long state;       /*   144     8 */
-    char fill_2[168];
-} __attribute__((__packed__));  // 320
+struct netdev_queue {
+    unsigned char __padding1[72]; /* [0-71] 72 bytes */
+    unsigned long trans_start; /* [72-75] 4 bytes */
+    unsigned long state; /* [76-79] 4 bytes */
+    unsigned char __padding2[176]; /* [80-255] 176 bytes */
+} __attribute__((__packed__)); /* total size: 256 bytes */
 
-struct net_device
-{
-    char name[16]; /*   0    16 */
-    char fill_1[208];
-    int ifindex; /*   224     4 */
-    char fill_2[2204];
-} __attribute__((__packed__));  // 2432
+struct net_device {
+    unsigned char  name[16]; /* [0-15] 16 bytes */
+    unsigned char __padding1[112]; /* [16-127] 112 bytes */
+    int ifindex; /* [128-131] 4 bytes */
+    unsigned char __padding2[1276]; /* [132-1407] 1276 bytes */
+} __attribute__((__packed__)); /* total size: 1408 bytes */
 
 struct nf_hook_state
 {
@@ -369,23 +343,21 @@ struct nf_hook_state
     u8 pf;   /*     1     1 */
 } __attribute__((__packed__));
 
-struct qdisc_skb_head
-{
-    char fill_1[16];
-    __u32 qlen; /*    16     4 */
-    char fill_2[4];
-} __attribute__((__packed__));  // 24
+struct qdisc_skb_head {
+    unsigned char __padding1[8]; /* [0-7] 8 bytes */
+    unsigned int qlen; /* [8-11] 4 bytes */
+    unsigned char __padding2[4]; /* [12-15] 4 bytes */
+} __attribute__((__packed__)); /* total size: 16 bytes */
 
-struct Qdisc
-{
-    char fill_1[16];
-    unsigned int flags; /*    16     4 */
-    char fill_2[44];
-    struct netdev_queue *dev_queue; /*    64     8 */
-    char fill_3[80];
-    struct qdisc_skb_head q; /*   152    24 */
-    char fill_4[208];
-} __attribute__((__packed__));  // 384
+struct Qdisc {
+    unsigned char __padding1[8]; /* [0-7] 8 bytes */
+    unsigned int flags; /* [8-11] 4 bytes */
+    unsigned char __padding2[28]; /* [12-39] 28 bytes */
+    u32 dev_queue; /* [40-43] 4 bytes */
+    unsigned char __padding3[36]; /* [44-79] 36 bytes */
+    struct qdisc_skb_head q; /* [80-95] 16 bytes */
+    unsigned char __padding4[160]; /* [96-255] 160 bytes */
+} __attribute__((__packed__)); /* total size: 256 bytes */
 
 typedef unsigned int nf_hookfn(void *, struct sk_buff *, const struct nf_hook_state *);
 
@@ -411,80 +383,49 @@ struct pt_regs {
 	long unsigned int uregs[18];
 };
 
-struct sk_buff
-{
-    union
-    {
-        struct
-        {
-            struct sk_buff *next;
-            struct sk_buff *prev;
-            union
-            {
-                struct net_device *dev; /*    16     8 */
-            };
-        };
-    };
-    struct sock *sk; /*    24     8 */
-    char fill_0[8];
-    char cb[48]; /*    40    48 */
-    char fill_1[56];
-    union
-    {
-        struct
-        {
-            // char fill_2[20];
-            int skb_iif; /*   144     4 */
-            char fill_3[24];
-            __be16 protocol;        /*   172     2 */
-            __u16 transport_header; /*   174     2 */
-            __u16 network_header;   /*   176     2 */
-            __u16 mac_header;       /*   178     2 */
-        };
-        struct
-        {
-            // char fill_2[20];
-            int skb_iif; /*   144     4 */
-            char fill_3[24];
-            __be16 protocol;        /*   172     2 */
-            __u16 transport_header; /*   174     2 */
-            __u16 network_header;   /*   176     2 */
-            __u16 mac_header;       /*   178     2 */
-        } headers;
-    };
-    char fill_4[204];
-    unsigned char *head; /*   384     8 */
-    char fill_5[24];
-} __attribute__((__packed__));  // 416
+struct sk_buff {
+    unsigned char __padding1[8]; /* [0-7] 8 bytes */
+    struct net_device * dev; /* [8-11] 4 bytes */
+    struct sock * sk; /* [12-15] 4 bytes */
+    unsigned char __padding2[8]; /* [16-23] 8 bytes */
+    unsigned char  cb[48]; /* [24-71] 48 bytes */
+    unsigned char __padding3[40]; /* [72-111] 40 bytes */
+    u32 skb_iif; /* [112-115] 4 bytes */
+    unsigned char __padding4[24]; /* [116-139] 24 bytes */
+    __be16 protocol; /* [140-141] 2 bytes */
+    u16 transport_header; /* [142-143] 2 bytes */
+    u16 network_header; /* [144-145] 2 bytes */
+    u16 mac_header; /* [146-147] 2 bytes */
+    unsigned char __padding5[8]; /* [148-155] 8 bytes */
+    void * head; /* [156-159] 4 bytes */
+    unsigned char __padding6[16]; /* [160-175] 16 bytes */
+} __attribute__((__packed__)); /* total size: 176 bytes */
 
-struct sk_buff_head
-{
-    char fill_1[16];
-    __u32 qlen; /*    16     4 */
-    char fill_2[4];
-} __attribute__((__packed__));  // 24
+struct sk_buff_head {
+    unsigned char __padding1[8]; /* [0-7] 8 bytes */
+    unsigned int qlen; /* [8-11] 4 bytes */
+    unsigned char __padding2[4]; /* [12-15] 4 bytes */
+} __attribute__((__packed__)); /* total size: 16 bytes */
 
 struct sock;
 
-struct socket
-{
-    char fill_1[24];
-    struct sock *sk; /*    24     8 */
-    char fill_2[96];
-} __attribute__((__packed__));  // 128
+struct socket {
+    unsigned char __padding1[16]; /* [0-15] 16 bytes */
+    struct sock * sk; /* [16-19] 4 bytes */
+    unsigned char __padding2[108]; /* [20-127] 108 bytes */
+} __attribute__((__packed__)); /* total size: 128 bytes */
 
 struct sock_common;
 
-struct sock
-{
-    struct sock_common __sk_common; /*     0   136 */
-    char fill_1[80];
-    struct sk_buff_head sk_receive_queue; /*   216    24 */
-    char fill_2[120];
-    struct sk_buff_head sk_write_queue; /*   360    24 */
-    char fill_3[132];
-    u16 sk_protocol; /*   516    2 */
-    char fill_4[322];
-} __attribute__((__packed__));  // 840
+struct sock {
+    struct sock_common __sk_common; /* [0-79] 80 bytes */
+    unsigned char __padding1[56]; /* [80-135] 56 bytes */
+    struct sk_buff_head sk_receive_queue; /* [136-151] 16 bytes */
+    unsigned char __padding2[76]; /* [152-227] 76 bytes */
+    struct sk_buff_head sk_write_queue; /* [228-243] 16 bytes */
+    unsigned char __padding3[96]; /* [244-339] 96 bytes */
+    u16 sk_protocol; /* [340-341] 2 bytes */
+    unsigned char __padding4[154]; /* [342-495] 154 bytes */
+} __attribute__((__packed__)); /* total size: 496 bytes */
 
 #endif
