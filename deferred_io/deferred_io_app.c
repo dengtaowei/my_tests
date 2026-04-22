@@ -7,7 +7,7 @@
 
 // mknod /dev/m_deferred_io c 247 0
 
-#define BUFFER_SIZE 8192
+#define BUFFER_SIZE 1024
 
 int main(int argc, const char*argv[])
 {
