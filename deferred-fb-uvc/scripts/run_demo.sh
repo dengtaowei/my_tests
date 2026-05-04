@@ -10,7 +10,7 @@ fi
 
 cd "$ROOT/kernel"
 make
-insmod deferred_fb.ko width=640 height=480 bpp=16 tx_enable=1 tx_tty=/dev/ttyGS0 || true
+insmod deferred_fb.ko width=640 height=480 bpp=16 tx_tty=/dev/ttyGS0 || true
 
 "$ROOT/scripts/setup_serial.sh" up
 

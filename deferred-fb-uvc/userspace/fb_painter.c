@@ -11,6 +11,7 @@
 
 static void draw_bars_rgb565(uint16_t *base, uint32_t w, uint32_t h, uint32_t stride_px, uint32_t phase)
 {
+#if 0
     uint32_t y;
     for (y = 0; y < h; y++) {
         uint32_t x;
@@ -23,6 +24,34 @@ static void draw_bars_rgb565(uint16_t *base, uint32_t w, uint32_t h, uint32_t st
             row[x] = rgb565;
         }
     }
+#else
+
+    uint32_t y;
+    for (y = 0; y < h; y++) {
+        uint32_t x;
+        uint16_t *row = base + (size_t)y * stride_px;
+        for (x = 0; x < w; x++) {
+
+            uint8_t r = 0;
+            uint8_t g = 0;
+            uint8_t b = 0;
+            if (phase % 3 == 0)
+            {
+                r = 0xff;
+            }
+            else if (phase % 3 == 1)
+            {
+                g = 0xff;
+            }
+            else if (phase % 3 == 2)
+            {
+                b = 0xff;
+            }
+            uint16_t rgb565 = (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+            row[x] = rgb565;
+        }
+    }
+#endif
 }
 
 int main(int argc, char **argv)
@@ -33,7 +62,7 @@ int main(int argc, char **argv)
     struct fb_fix_screeninfo fix;
     uint8_t *map = NULL;
     size_t size;
-    struct timespec ts = {.tv_sec = 0, .tv_nsec = 33000000L};
+    struct timespec ts = {.tv_sec = 1, .tv_nsec = 33000000L};
     uint32_t phase = 0;
 
     fd = open(fb_path, O_RDWR);
@@ -63,6 +92,7 @@ int main(int argc, char **argv)
     }
 
     printf("painting %ux%u on %s via mmap...\n", var.xres, var.yres, fb_path);
+    sleep(1);
     while (1) {
         draw_bars_rgb565((uint16_t *)map, var.xres, var.yres, fix.line_length / 2, phase++);
         nanosleep(&ts, NULL);

@@ -22,13 +22,9 @@ static int bpp = 16;
 module_param(bpp, int, 0644);
 MODULE_PARM_DESC(bpp, "Bits per pixel (16 or 32)");
 
-static unsigned int defio_delay_ms = 33;
+static unsigned int defio_delay_ms = 50;
 module_param(defio_delay_ms, uint, 0644);
 MODULE_PARM_DESC(defio_delay_ms, "deferred io delay in milliseconds");
-
-static bool tx_enable = true;
-module_param(tx_enable, bool, 0644);
-MODULE_PARM_DESC(tx_enable, "Enable kernel push to USB serial gadget");
 
 static char *tx_tty = "/dev/ttyGS0";
 module_param(tx_tty, charp, 0644);
@@ -41,11 +37,6 @@ struct deferred_fb_dev {
 	struct fb_deferred_io defio;
 	u32 pseudo_palette[16];
 	atomic_t seq;
-	struct mutex tx_lock;
-	u32 dirty_y1;
-	u32 dirty_y2;
-	bool dirty_pending;
-	struct work_struct tx_work;
 	u32 tx_last_seq;
 	u8 *tx_buf;
 };
@@ -59,7 +50,8 @@ static int deferred_fb_send_all(const void *buf, size_t len)
 	const u8 *p = buf;
 	size_t left = len;
 
-	filp = filp_open(tx_tty, O_WRONLY | O_NONBLOCK, 0);
+	// filp = filp_open(tx_tty, O_WRONLY | O_NONBLOCK, 0);
+	filp = filp_open(tx_tty, O_WRONLY, 0);
 	if (IS_ERR(filp))
 		return PTR_ERR(filp);
 
@@ -78,31 +70,12 @@ static int deferred_fb_send_all(const void *buf, size_t len)
 	}
 
 	filp_close(filp, NULL);
-	return 0;
+	return len;
 }
 
-static void deferred_fb_mark_dirty_lines(struct deferred_fb_dev *dev, u32 y1, u32 y2)
+static void update_display(struct deferred_fb_dev *dev, unsigned int start_line, 
+	unsigned int end_line)
 {
-	mutex_lock(&dev->tx_lock);
-	if (!dev->dirty_pending) {
-		dev->dirty_y1 = y1;
-		dev->dirty_y2 = y2;
-		dev->dirty_pending = true;
-	} else {
-		if (y1 < dev->dirty_y1)
-			dev->dirty_y1 = y1;
-		if (y2 > dev->dirty_y2)
-			dev->dirty_y2 = y2;
-	}
-	atomic_inc(&dev->seq);
-	mutex_unlock(&dev->tx_lock);
-	schedule_work(&dev->tx_work);
-}
-
-static void deferred_fb_tx_worker(struct work_struct *work)
-{
-	struct deferred_fb_dev *dev =
-		container_of(work, struct deferred_fb_dev, tx_work);
 	struct deferred_fb_usb_frame_hdr hdr;
 	u32 seq;
 	u32 y1;
@@ -112,27 +85,20 @@ static void deferred_fb_tx_worker(struct work_struct *work)
 	void *src;
 	int ret;
 
-	if (!tx_enable)
-		return;
+	y1 = start_line;
+	y2 = end_line;
 
-	seq = (u32)atomic_read(&dev->seq);
-	if (seq == dev->tx_last_seq)
-		return;
-
-	mutex_lock(&dev->tx_lock);
-	if (!dev->dirty_pending) {
-		mutex_unlock(&dev->tx_lock);
+	if (y2 < y1)
+	{
 		return;
 	}
-	y1 = dev->dirty_y1;
-	y2 = dev->dirty_y2;
-	dev->dirty_pending = false;
-	mutex_unlock(&dev->tx_lock);
+
+	seq = (u32)atomic_read(&dev->seq);
 
 	line_length = dev->info->fix.line_length;
 	payload_size = (size_t)(y2 - y1 + 1) * line_length;
 	src = (u8 *)dev->vmem + ((size_t)y1 * line_length);
-	memcpy(dev->tx_buf, src, payload_size);
+	memcpy(dev->tx_buf + sizeof(struct deferred_fb_usb_frame_hdr), src, payload_size);
 
 	memset(&hdr, 0, sizeof(hdr));
 	hdr.magic = DEFERRED_FB_USB_MAGIC;
@@ -146,14 +112,21 @@ static void deferred_fb_tx_worker(struct work_struct *work)
 	hdr.x2 = width - 1;
 	hdr.y2 = y2;
 	hdr.payload_size = (u32)payload_size;
+	memcpy(dev->tx_buf, &hdr, sizeof(struct deferred_fb_usb_frame_hdr));
 
-	ret = deferred_fb_send_all(&hdr, sizeof(hdr));
-	if (ret < 0)
-		return;
+	// printk("dtwdebug[%s][%d] y1=%d, y2=%d, payload_size=%d, total=%d, firstb %02x\n", __func__, __LINE__, y1, y2, payload_size, payload_size + sizeof(struct deferred_fb_usb_frame_hdr), 
+	// 	((char *)src)[0]);
 
-	ret = deferred_fb_send_all(dev->tx_buf, payload_size);
-	if (ret < 0)
+	// ret = deferred_fb_send_all(&hdr, sizeof(hdr));
+	// if (ret < 0)
+	// 	return;
+
+	ret = deferred_fb_send_all(dev->tx_buf, payload_size + sizeof(struct deferred_fb_usb_frame_hdr));
+	if (ret != payload_size + sizeof(struct deferred_fb_usb_frame_hdr))
+	{
+		printk("dtwdebug[%s][%d] send err ret = %d\n", __func__, __LINE__, ret);
 		return;
+	}
 
 	dev->tx_last_seq = seq;
 }
@@ -161,44 +134,36 @@ static void deferred_fb_tx_worker(struct work_struct *work)
 static void deferred_fb_deferred_io(struct fb_info *info, struct list_head *pagelist)
 {
 	struct deferred_fb_dev *dev = info->par;
+	unsigned int dirty_lines_start, dirty_lines_end;
 	struct page *page;
-	size_t min_off = dev->vmem_size;
-	size_t max_off = 0;
-	bool has_pages = false;
-	u32 y1, y2;
+	unsigned long index;
+	unsigned int y_low = 0, y_high = 0;
+	int count = 0;
 
+	dirty_lines_start = info->var.yres - 1;
+	dirty_lines_end = 0;
+
+	/* Mark display lines as dirty */
 	list_for_each_entry(page, pagelist, lru) {
-		size_t start = ((size_t)page->index) << PAGE_SHIFT;
-		size_t end = start + PAGE_SIZE;
-
-		if (start >= dev->vmem_size)
-			continue;
-		if (end > dev->vmem_size)
-			end = dev->vmem_size;
-
-		if (!has_pages) {
-			min_off = start;
-			max_off = end;
-			has_pages = true;
-		} else {
-			if (start < min_off)
-				min_off = start;
-			if (end > max_off)
-				max_off = end;
-		}
+		count++;
+		index = page->index << PAGE_SHIFT;
+		y_low = index / info->fix.line_length;
+		y_high = (index + PAGE_SIZE - 1) / info->fix.line_length;
+		// printk(
+		// 	"page->index=%lu y_low=%d y_high=%d\n",
+		// 	page->index, y_low, y_high);
+		if (y_high > info->var.yres - 1)
+			y_high = info->var.yres - 1;
+		if (y_low < dirty_lines_start)
+			dirty_lines_start = y_low;
+		if (y_high > dirty_lines_end)
+			dirty_lines_end = y_high;
 	}
 
-	if (!has_pages) {
-		deferred_fb_mark_dirty_lines(dev, 0, height - 1);
-		return;
-	}
+	update_display(info->par,
+					dirty_lines_start, dirty_lines_end);
 
-	y1 = (u32)(min_off / info->fix.line_length);
-	y2 = (u32)((max_off - 1) / info->fix.line_length);
-	if (y2 >= (u32)height)
-		y2 = height - 1;
-
-	deferred_fb_mark_dirty_lines(dev, y1, y2);
+	atomic_inc(&dev->seq);
 }
 
 static int deferred_fb_mmap(struct fb_info *info, struct vm_area_struct *vma)
@@ -239,7 +204,7 @@ static int __init deferred_fb_init(void)
 		goto err_free_dev;
 	}
 
-	dev->tx_buf = vzalloc(dev->vmem_size);
+	dev->tx_buf = vzalloc(dev->vmem_size + sizeof(struct deferred_fb_usb_frame_hdr));
 	if (!dev->tx_buf) {
 		ret = -ENOMEM;
 		goto err_free_vmem;
@@ -252,11 +217,6 @@ static int __init deferred_fb_init(void)
 	}
 
 	atomic_set(&dev->seq, 1);
-	mutex_init(&dev->tx_lock);
-	dev->dirty_y1 = 0;
-	dev->dirty_y2 = height - 1;
-	dev->dirty_pending = true;
-	INIT_WORK(&dev->tx_work, deferred_fb_tx_worker);
 	dev->tx_last_seq = 0;
 
 	info->screen_base = dev->vmem;
@@ -314,7 +274,6 @@ static int __init deferred_fb_init(void)
 
 	dev->info = info;
 	gdev = dev;
-	schedule_work(&dev->tx_work);
 
 	pr_info("deferred_fb: /dev/fb%d (%dx%dx%d), defio_delay_ms=%u\n",
 		info->node, width, height, bpp, defio_delay_ms);
@@ -339,7 +298,6 @@ static void __exit deferred_fb_exit(void)
 	if (!dev)
 		return;
 
-	cancel_work_sync(&dev->tx_work);
 	unregister_framebuffer(dev->info);
 	fb_deferred_io_cleanup(dev->info);
 	framebuffer_release(dev->info);

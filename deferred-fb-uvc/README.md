@@ -49,13 +49,13 @@ After success you should see `/dev/ttyGS0`.
 ```bash
 cd kernel
 make
-sudo insmod deferred_fb.ko width=640 height=480 bpp=16 tx_enable=1 tx_tty=/dev/ttyGS0
+sudo insmod deferred_fb.ko width=640 height=480 bpp=16 tx_tty=/dev/ttyGS0
 ```
 
 If you want a different deferred-io latency, set:
 
 ```bash
-sudo insmod deferred_fb.ko width=640 height=480 bpp=16 defio_delay_ms=50 tx_enable=1 tx_tty=/dev/ttyGS0
+sudo insmod deferred_fb.ko width=640 height=480 bpp=16 defio_delay_ms=50 tx_tty=/dev/ttyGS0
 ```
 
 ### 3) Build userspace tools
