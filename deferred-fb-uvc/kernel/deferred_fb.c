@@ -107,6 +107,9 @@ static void deferred_fb_tx_worker(struct work_struct *work)
 	u32 seq;
 	u32 y1;
 	u32 y2;
+	u32 line_length;
+	size_t payload_size;
+	void *src;
 	int ret;
 
 	if (!tx_enable)
@@ -126,7 +129,10 @@ static void deferred_fb_tx_worker(struct work_struct *work)
 	dev->dirty_pending = false;
 	mutex_unlock(&dev->tx_lock);
 
-	memcpy(dev->tx_buf, dev->vmem, dev->vmem_size);
+	line_length = dev->info->fix.line_length;
+	payload_size = (size_t)(y2 - y1 + 1) * line_length;
+	src = (u8 *)dev->vmem + ((size_t)y1 * line_length);
+	memcpy(dev->tx_buf, src, payload_size);
 
 	memset(&hdr, 0, sizeof(hdr));
 	hdr.magic = DEFERRED_FB_USB_MAGIC;
@@ -134,17 +140,18 @@ static void deferred_fb_tx_worker(struct work_struct *work)
 	hdr.width = width;
 	hdr.height = height;
 	hdr.bpp = bpp;
+	hdr.line_length = line_length;
 	hdr.x1 = 0;
 	hdr.y1 = y1;
 	hdr.x2 = width - 1;
 	hdr.y2 = y2;
-	hdr.payload_size = (u32)dev->vmem_size;
+	hdr.payload_size = (u32)payload_size;
 
 	ret = deferred_fb_send_all(&hdr, sizeof(hdr));
 	if (ret < 0)
 		return;
 
-	ret = deferred_fb_send_all(dev->tx_buf, dev->vmem_size);
+	ret = deferred_fb_send_all(dev->tx_buf, payload_size);
 	if (ret < 0)
 		return;
 

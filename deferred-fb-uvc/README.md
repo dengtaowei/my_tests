@@ -79,7 +79,7 @@ sudo ./scripts/run_demo.sh
 
 ## PC side steps
 
-Install deps:
+### Option A: Python viewer (existing)
 
 ```bash
 pip install pyserial opencv-python numpy
@@ -91,17 +91,45 @@ Run viewer (`COMx` on Windows, `/dev/ttyACM0` on Linux):
 python3 userspace/pc_serial_view.py COM5 2000000
 ```
 
+### Option B: Qt 5.14.2 C++ viewer (new)
+
+Project file:
+
+- `userspace/pc_serial_view_qt.pro`
+
+Source:
+
+- `userspace/pc_serial_view_qt.cpp`
+
+Build with Qt 5.14.2 (qmake):
+
+```bash
+cd userspace
+qmake pc_serial_view_qt.pro
+make
+```
+
+Run:
+
+```bash
+./pc_serial_view_qt --port COM5 --baud 2000000
+```
+
+You can also ignore `--port` and select port from the GUI (`Serial Port` drop-down, then `Connect`).
+
+On Windows (Qt MinGW shell), executable is usually in `release\pc_serial_view_qt.exe`.
+
 ## Packet format (board -> PC)
 
 - Header: `struct deferred_fb_usb_frame_hdr` (`DEFERRED_FB_USB_MAGIC = 0x31424644`)
-- Payload: raw framebuffer bytes (RGB565 for `bpp=16`, XRGB8888 for `bpp=32`)
-
-Current implementation sends whole frame when deferred-io marks dirty.
+- Header fields include: `width`, `height`, `bpp`, `line_length`, dirty rect (`x1..y2`), `payload_size`.
+- Payload: **dirty-rect rows only** (currently full width rows from `y1` to `y2`), not full frame.
+- PC viewer keeps a local framebuffer cache and patches dirty rows before rendering.
 
 The dirty trigger is now based on the standard deferred-io pagelist callback:
 - user-space mmap write marks pages dirty
 - callback runs after `defio_delay_ms`
-- driver coalesces dirty page range to line range and triggers TX
+- driver coalesces dirty page range to line range and only transmits that dirty row block
 
 ## Stop and cleanup
 

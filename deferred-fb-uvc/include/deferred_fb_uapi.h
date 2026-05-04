@@ -9,6 +9,7 @@ struct deferred_fb_usb_frame_hdr {
     __u32 width;
     __u32 height;
     __u32 bpp;
+    __u32 line_length;
     __u32 x1;
     __u32 y1;
     __u32 x2;
